@@ -8,6 +8,7 @@ import java.util.*;
 /**
  * Created by chill on 9/17/16.
  */
+
 public class IM_Client {
 
     // for I/O
@@ -19,7 +20,7 @@ public class IM_Client {
     private String server, username;
     private int port;
 
-    IM_Client(String server, int port, String username) {
+    private IM_Client(String server, int port, String username) {
         // which calls the common constructor with the GUI set to null
         this.server = server;
         this.port = port;
@@ -65,7 +66,7 @@ public class IM_Client {
     }
 
     // Connect to the server
-    public boolean connectToServer() {
+    private boolean connectToServer() {
         // try to connect to the server
         try {
             socket = new Socket(server, port);
@@ -113,7 +114,7 @@ public class IM_Client {
     }
 
     // Client --> Server Message
-    void sendMessage(ChatMessage msg) {
+    private void sendMessage(ChatMessage msg) {
         try {
             sOutput.writeObject(msg);
         }
@@ -128,40 +129,37 @@ public class IM_Client {
         try {
             if(sInput != null) sInput.close();
         }
-        catch(Exception e) {} // not much else I can do
+        catch(Exception ignored) {}
         try {
             if(sOutput != null) sOutput.close();
         }
-        catch(Exception e) {} // not much else I can do
+        catch(Exception ignored) {}
         try{
             if(socket != null) socket.close();
         }
-        catch(Exception e) {} // not much else I can do
+        catch(Exception ignored) {}
 
     }
 
      // a class that waits for the message from the server and append them to the JTextArea
      // if we have a GUI or simply System.out.println() it in console mode
 
-    class ListenFromServer extends Thread {
+    private class ListenFromServer extends Thread {
 
         public void run() {
-            while(true) {
-                try {
-                    String msg = (String) sInput.readObject();
-                    // if console mode print the message and add back the prompt
+            while(true) try {
+                String msg = (String) sInput.readObject();
+                // if console mode print the message and add back the prompt
 
-                    System.out.println(msg);
-                    System.out.print("> ");
+                System.out.println(msg);
+                System.out.print("> ");
 
-                }
-                catch(IOException e) {
-                    display("Server has close the connection: " + e);
-                    break;
-                }
-                // can't happen with a String object but need the catch anyhow
-                catch(ClassNotFoundException e2) {
-                }
+            } catch (IOException e) {
+                display("Server has close the connection: " + e);
+                break;
+            }
+            // can't happen with a String object but need the catch anyhow
+            catch (ClassNotFoundException ignored) {
             }
         }
     }

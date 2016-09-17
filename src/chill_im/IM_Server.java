@@ -10,6 +10,7 @@ import java.util.Date;
 /**
  * Created by chill on 9/17/16.
  */
+
 public class IM_Server {
     // a unique ID for each connection
     private static int uniqueId;
@@ -23,7 +24,7 @@ public class IM_Server {
     private boolean keepGoing;
 
     
-    public IM_Server(int port) {
+    private IM_Server(int port) {
         // the port
         this.port = port;
         // to display hh:mm:ss
@@ -41,7 +42,7 @@ public class IM_Server {
         server.startServer();
     }
 
-    public void startServer() {
+    private void startServer() {
         keepGoing = true;
 		/* create socket server and wait for connection requests */
         try
@@ -66,14 +67,12 @@ public class IM_Server {
             // I was asked to stop
             try {
                 serverSocket.close();
-                for(int i = 0; i < al.size(); ++i) {
-                    ClientThread tc = al.get(i);
+                for (ClientThread tc : al) {
                     try {
                         tc.sInput.close();
                         tc.sOutput.close();
                         tc.socket.close();
-                    }
-                    catch(IOException ioE) {
+                    } catch (IOException ioE) {
                         // not much I can do
                     }
                 }
@@ -118,7 +117,7 @@ public class IM_Server {
     }
 
     // for a client who logoff using the LOGOUT message
-    synchronized void remove(int id) {
+    private synchronized void remove(int id) {
         // scan the array list until we found the Id
         for(int i = 0; i < al.size(); ++i) {
             ClientThread ct = al.get(i);
@@ -132,7 +131,7 @@ public class IM_Server {
 
 
     /** One instance of this thread will run for each client */
-    class ClientThread extends Thread {
+    private class ClientThread extends Thread {
         // the socket where to listen/talk
         Socket socket;
         ObjectInputStream sInput;
@@ -168,7 +167,7 @@ public class IM_Server {
             }
             // have to catch ClassNotFoundException
             // but I read a String, I am sure it will work
-            catch (ClassNotFoundException e) {
+            catch (ClassNotFoundException ignored) {
             }
             date = new Date().toString() + "\n";
         }
@@ -224,15 +223,15 @@ public class IM_Server {
             try {
                 if(sOutput != null) sOutput.close();
             }
-            catch(Exception e) {}
+            catch(Exception ignored) {}
             try {
                 if(sInput != null) sInput.close();
             }
-            catch(Exception e) {};
+            catch(Exception ignored) {}
             try {
                 if(socket != null) socket.close();
             }
-            catch (Exception e) {}
+            catch (Exception ignored) {}
         }
 
 
