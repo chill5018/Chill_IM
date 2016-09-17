@@ -4,16 +4,18 @@ package chill_im;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by chill on 9/17/16.
  */
 
 public class IM_Client {
-
     // for I/O
     private ObjectInputStream sInput;		// to read from the socket
-    private ObjectOutputStream sOutput;		// to write on the socket
+    private static ObjectOutputStream sOutput;		// to write on the socket
     private Socket socket;
     
     // the server, the port and the username
@@ -21,7 +23,6 @@ public class IM_Client {
     private int port;
 
     private IM_Client(String server, int port, String username) {
-        // which calls the common constructor with the GUI set to null
         this.server = server;
         this.port = port;
         this.username = username;
@@ -29,16 +30,32 @@ public class IM_Client {
 
     public static void main(String[] args) {
         // default values
-        int portNumber = 1234;
+        String userName = setUsername();
+
+        // TODO: Make this work
+//        Socket cliSckt = configMenu();
+//        String serverAddress = cliSckt.getLocalAddress().getHostAddress();
+//        System.out.println(serverAddress);
+//        int portNumber = cliSckt.getPort();
+//        System.out.println(portNumber);
+        // TODO:  END MAKE THIS WORK
+
         String serverAddress = "localhost";
-        String userName = "Anonymous";
+        int portNumber = 1234;
+
+
+        
+
 
         // create the Client object
         IM_Client client = new IM_Client(serverAddress, portNumber, userName);
-        // test if we can connectToServer the connection to the Server
-        // if it failed nothing we can do
+
+        // test if we can start the connection to the Server
         if(!client.connectToServer())
             return;
+
+        sendMessage(new ChatMessage(ChatMessage.JOIN, "JOIN "+userName+" , "+ serverAddress+" : "+
+                portNumber));
 
         // wait for messages from user
         Scanner scan = new Scanner(System.in);
@@ -48,21 +65,94 @@ public class IM_Client {
             // read message from user
             String msg = scan.nextLine();
             // logout if message is LOGOUT
-            if(msg.equalsIgnoreCase("LOGOUT")) {
-                client.sendMessage(new ChatMessage(ChatMessage.LOGOUT, ""));
+            if(msg.equalsIgnoreCase("QUIT")) {
+                client.sendMessage(new ChatMessage(ChatMessage.QUIT, ""));
                 // break to do the disconnect
                 break;
-            }
-            // message WhoIsIn
-            else if(msg.equalsIgnoreCase("WHOISIN")) {
-                client.sendMessage(new ChatMessage(ChatMessage.WHOISIN, ""));
-            }
-            else {				// default to ordinary message
-                client.sendMessage(new ChatMessage(ChatMessage.MESSAGE, msg));
+            } else if(msg.equalsIgnoreCase("LIST")) {
+                // message WhoIsIn
+                client.sendMessage(new ChatMessage(ChatMessage.LIST, ""));
+            } else {
+                // default to ordinary message
+                client.sendMessage(new ChatMessage(ChatMessage.DATA, msg));
             }
         }
         // done disconnect
         client.disconnect();
+    }
+
+
+    // TODO: Maybe use this for the heartbeat?
+    private static void heartBeat(IM_Client client) {
+        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
+        exec.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                // do stuff
+                client.sendMessage(new ChatMessage(ChatMessage.DATA, "ALVE"));
+            }
+        }, 0, 60, TimeUnit.SECONDS);
+    }
+
+
+//    private static Socket configMenu(){
+//        Scanner userInput = new Scanner(System.in);
+//
+//        Socket s = new Socket();
+//
+//        String hostIP = "localhost";
+//        int port = 1234;
+//        // Default Port
+//
+//        System.out.println(
+//                "Enter 1: for Manual Config " +
+//                        "\nEnter 2: for LocalHost Config\n");
+//        switch (userInput.nextInt()) {
+//            case 1:
+//                System.out.println("Enter Server IP: ");
+//                hostIP = userInput.nextLine();
+//                hostIP += userInput.nextLine();
+//
+//                System.out.print("Enter Server PORT: ");
+//                port = userInput.nextInt();
+//
+//                try {
+//                    // Set the Global Host Variable
+//                    s = new Socket(hostIP, port);
+//                } catch (IOException e) {
+//                    System.out.println("\nHost ID not found!");
+//                    System.exit(1);
+//                }
+//                break;
+//
+//            default:
+//                hostIP = "127.0.0.1";
+//                port = 1234;
+//                try {
+//                    // Set the Global Host Variable
+//                    s = new Socket(hostIP, port);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//                break;
+//        }
+//
+//        userInput.close();
+//        return s;
+//    }
+    private static String setUsername() {
+        Scanner userInput = new Scanner(System.in);
+
+        System.out.print("Enter UserName: ");
+        String username = userInput.next();
+
+        if (username.length() > 12) {
+            System.out.println("Max 12 Characters!");
+            System.out.println("Please Try Again...");
+            System.out.print("Enter UserName: ");
+            username = userInput.next();
+        }
+        return username;
     }
 
     // Connect to the server
@@ -109,12 +199,12 @@ public class IM_Client {
     }
 
     // Show Client a local Message
-    private void display(String msg) {
-        System.out.println(msg);      // println in console mode
+    private static void display(String msg) {
+        System.out.println(msg);
     }
 
     // Client --> Server Message
-    private void sendMessage(ChatMessage msg) {
+    private static void sendMessage(ChatMessage msg) {
         try {
             sOutput.writeObject(msg);
         }
@@ -149,7 +239,14 @@ public class IM_Client {
         public void run() {
             while(true) try {
                 String msg = (String) sInput.readObject();
-                // if console mode print the message and add back the prompt
+                // Print the message and add back the prompt
+
+                if (msg.equals("J_ERR")) {
+                    // validation failed
+                    setUsername();
+                } else if (msg.equals("J_OK")) {
+                    // validation successful;
+                }
 
                 System.out.println(msg);
                 System.out.print("> ");
@@ -279,7 +376,7 @@ public class IM_Client {
             display(userName);
             clientOutput.writeObject(userName);
             // JOIN Protocol client --> server
-           display("JOIN PROTOCOL "+userName+" , "+ clientSocket.getInetAddress().getHostAddress()+" : "+
+           display("JOIN "+userName+" , "+ clientSocket.getInetAddress().getHostAddress()+" : "+
                     clientSocket.getPort());
         }
         catch (IOException eIO) {

@@ -57,25 +57,23 @@ public class IM_Server {
                 display("Server waiting for Clients on port " + port + ".");
 
                 Socket socket = serverSocket.accept();  	// accept connection
+
                 // if I was asked to stop
                 if(!keepGoing)
                     break;
                 ClientThread t = new ClientThread(socket);  // make a thread of it
-                al.add(t);									// save it in the ArrayList
+//                al.add(t);		// Do this elsewhere
                 t.start();
             }
-            // I was asked to stop
+            // KeepGoing == False --> Close Connection
             try {
                 serverSocket.close();
-                for (ClientThread tc : al) {
+                for (ClientThread tc : al)
                     try {
                         tc.sInput.close();
                         tc.sOutput.close();
                         tc.socket.close();
-                    } catch (IOException ioE) {
-                        // not much I can do
-                    }
-                }
+                    } catch (IOException ignored) {}
             }
             catch(Exception e) {
                 display("Exception closing the server and clients: " + e);
@@ -116,7 +114,7 @@ public class IM_Server {
         }
     }
 
-    // for a client who logoff using the LOGOUT message
+    // for a client who logoff using the QUIT message
     private synchronized void remove(int id) {
         // scan the array list until we found the Id
         for(int i = 0; i < al.size(); ++i) {
@@ -136,13 +134,13 @@ public class IM_Server {
         Socket socket;
         ObjectInputStream sInput;
         ObjectOutputStream sOutput;
-        // my unique id (easier for deconnection)
+        // unique id (easier for deconnection)
         int id;
         // the Username of the Client
         String username;
         // the only type of message a will receive
         ChatMessage cm;
-        // the date I connect
+        // the date of connection
         String date;
 
         // Constructor
@@ -150,6 +148,7 @@ public class IM_Server {
             // a unique id
             id = ++uniqueId;
             this.socket = socket;
+
 			/* Creating both Data Stream */
             System.out.println("Thread trying to create Object Input/Output Streams");
             try
@@ -158,6 +157,7 @@ public class IM_Server {
                 sOutput = new ObjectOutputStream(socket.getOutputStream());
                 sInput  = new ObjectInputStream(socket.getInputStream());
                 // read the username
+
                 username = (String) sInput.readObject();
                 display(username + " just connected.");
             }
@@ -165,8 +165,6 @@ public class IM_Server {
                 display("Exception creating new Input/output Streams: " + e);
                 return;
             }
-            // have to catch ClassNotFoundException
-            // but I read a String, I am sure it will work
             catch (ClassNotFoundException ignored) {
             }
             date = new Date().toString() + "\n";
@@ -188,20 +186,33 @@ public class IM_Server {
                 catch(ClassNotFoundException e2) {
                     break;
                 }
-                // the messaage part of the ChatMessage
+                // the message part of the ChatMessage
                 String message = cm.getMessage();
 
                 // Switch on the type of message receive
                 switch(cm.getType()) {
 
-                    case ChatMessage.MESSAGE:
+                    case ChatMessage.JOIN:
+                        for(int i = 0; i < al.size(); ++i) {
+                            if (!al.get(i).username.toLowerCase()
+                                    .equals(username.toLowerCase())) {
+                                try {
+                                    al.add(new ClientThread(new Socket(socket.getInetAddress().getHostAddress(), socket.getPort()), username))
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+
+                        break;
+                    case ChatMessage.DATA:
                         broadcast(username + ": " + message);
                         break;
-                    case ChatMessage.LOGOUT:
+                    case ChatMessage.QUIT:
                         display(username + " disconnected with a LOGOUT message.");
                         keepGoing = false;
                         break;
-                    case ChatMessage.WHOISIN:
+                    case ChatMessage.LIST:
                         writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
                         // scan al the users connected
                         for(int i = 0; i < al.size(); ++i) {
@@ -235,9 +246,9 @@ public class IM_Server {
         }
 
 
-        // Write a String to the Client output stream
+        // Write a String to an Individual Client output stream
         private boolean writeMsg(String msg) {
-            // if Client is still connected send the message to it
+            // if Client is still connected send the message to them
             if(!socket.isConnected()) {
                 close();
                 return false;
@@ -246,7 +257,7 @@ public class IM_Server {
             try {
                 sOutput.writeObject(msg);
             }
-            // if an error occurs, do not abort just inform the user
+            // if an error occurs do not abort, just inform the user
             catch(IOException e) {
                 display("Error sending message to " + username);
                 display(e.toString());
@@ -254,10 +265,6 @@ public class IM_Server {
             return true;
         }
     }
-
-
-
-
 }
 
 
