@@ -19,12 +19,6 @@ public class IM_Client {
     private String server, username;
     private int port;
 
-    /*
-     *  Constructor called by console mode
-     *  server: the server address
-     *  port: the port number
-     *  username: the username
-     */
     IM_Client(String server, int port, String username) {
         // which calls the common constructor with the GUI set to null
         this.server = server;
@@ -32,18 +26,53 @@ public class IM_Client {
         this.username = username;
     }
 
+    public static void main(String[] args) {
+        // default values
+        int portNumber = 1234;
+        String serverAddress = "localhost";
+        String userName = "Anonymous";
 
-    /*
-     * To start the dialog
-     */
-    public boolean start() {
+        // create the Client object
+        IM_Client client = new IM_Client(serverAddress, portNumber, userName);
+        // test if we can connectToServer the connection to the Server
+        // if it failed nothing we can do
+        if(!client.connectToServer())
+            return;
+
+        // wait for messages from user
+        Scanner scan = new Scanner(System.in);
+        // loop forever for message from the user
+        while(true) {
+            System.out.print("> ");
+            // read message from user
+            String msg = scan.nextLine();
+            // logout if message is LOGOUT
+            if(msg.equalsIgnoreCase("LOGOUT")) {
+                client.sendMessage(new ChatMessage(ChatMessage.LOGOUT, ""));
+                // break to do the disconnect
+                break;
+            }
+            // message WhoIsIn
+            else if(msg.equalsIgnoreCase("WHOISIN")) {
+                client.sendMessage(new ChatMessage(ChatMessage.WHOISIN, ""));
+            }
+            else {				// default to ordinary message
+                client.sendMessage(new ChatMessage(ChatMessage.MESSAGE, msg));
+            }
+        }
+        // done disconnect
+        client.disconnect();
+    }
+
+    // Connect to the server
+    public boolean connectToServer() {
         // try to connect to the server
         try {
             socket = new Socket(server, port);
         }
         // if it failed not much I can so
         catch(Exception ec) {
-            display("Error connectiong to server:" + ec);
+            display("Error connecting to server:" + ec);
             return false;
         }
 
@@ -78,16 +107,12 @@ public class IM_Client {
         return true;
     }
 
-    /*
-     * To send a message to the console or the GUI
-     */
+    // Show Client a local Message
     private void display(String msg) {
         System.out.println(msg);      // println in console mode
     }
 
-    /*
-     * To send a message to the server
-     */
+    // Client --> Server Message
     void sendMessage(ChatMessage msg) {
         try {
             sOutput.writeObject(msg);
@@ -97,10 +122,8 @@ public class IM_Client {
         }
     }
 
-    /*
-     * When something goes wrong
-     * Close the Input/Output streams and disconnect not much to do in the catch clause
-     */
+    //  When something goes wrong
+    //  Close the Input/Output streams and disconnect not much to do in the catch clause
     private void disconnect() {
         try {
             if(sInput != null) sInput.close();
@@ -116,92 +139,10 @@ public class IM_Client {
         catch(Exception e) {} // not much else I can do
 
     }
-    /*
-     * To start the Client in console mode use one of the following command
-     * > java Client
-     * > java Client username
-     * > java Client username portNumber
-     * > java Client username portNumber serverAddress
-     * at the console prompt
-     * If the portNumber is not specified 1500 is used
-     * If the serverAddress is not specified "localHost" is used
-     * If the username is not specified "Anonymous" is used
-     * > java Client
-     * is equivalent to
-     * > java Client Anonymous 1500 localhost
-     * are eqquivalent
-     *
-     * In console mode, if an error occurs the program simply stops
-     * when a GUI id used, the GUI is informed of the disconnection
-     */
-    public static void main(String[] args) {
-        // default values
-        int portNumber = 1500;
-        String serverAddress = "localhost";
-        String userName = "Anonymous";
 
-        // depending of the number of arguments provided we fall through
-        switch(args.length) {
-            // > javac Client username portNumber serverAddr
-            case 3:
-                serverAddress = args[2];
-                // > javac Client username portNumber
-            case 2:
-                try {
-                    portNumber = Integer.parseInt(args[1]);
-                }
-                catch(Exception e) {
-                    System.out.println("Invalid port number.");
-                    System.out.println("Usage is: > java Client [username] [portNumber] [serverAddress]");
-                    return;
-                }
-                // > javac Client username
-            case 1:
-                userName = args[0];
-                // > java Client
-            case 0:
-                break;
-            // invalid number of arguments
-            default:
-                System.out.println("Usage is: > java Client [username] [portNumber] {serverAddress]");
-                return;
-        }
-        // create the Client object
-        IM_Client client = new IM_Client(serverAddress, portNumber, userName);
-        // test if we can start the connection to the Server
-        // if it failed nothing we can do
-        if(!client.start())
-            return;
+     // a class that waits for the message from the server and append them to the JTextArea
+     // if we have a GUI or simply System.out.println() it in console mode
 
-        // wait for messages from user
-        Scanner scan = new Scanner(System.in);
-        // loop forever for message from the user
-        while(true) {
-            System.out.print("> ");
-            // read message from user
-            String msg = scan.nextLine();
-            // logout if message is LOGOUT
-            if(msg.equalsIgnoreCase("LOGOUT")) {
-                client.sendMessage(new ChatMessage(ChatMessage.LOGOUT, ""));
-                // break to do the disconnect
-                break;
-            }
-            // message WhoIsIn
-            else if(msg.equalsIgnoreCase("WHOISIN")) {
-                client.sendMessage(new ChatMessage(ChatMessage.WHOISIN, ""));
-            }
-            else {				// default to ordinary message
-                client.sendMessage(new ChatMessage(ChatMessage.MESSAGE, msg));
-            }
-        }
-        // done disconnect
-        client.disconnect();
-    }
-
-    /*
-     * a class that waits for the message from the server and append them to the JTextArea
-     * if we have a GUI or simply System.out.println() it in console mode
-     */
     class ListenFromServer extends Thread {
 
         public void run() {
@@ -261,8 +202,8 @@ public class IM_Client {
         System.out.printf("User: %s, Port:  %d,  Username: %s,", hostIP, port, userName);
         IM_Client client = new IM_Client(hostIP, port, userName);
 
-        // test if we can start the connection to the Server
-        if(!client.start())
+        // test if we can connectToServer the connection to the Server
+        if(!client.connectToServer())
             return;
 
 
@@ -305,7 +246,7 @@ public class IM_Client {
     }
 
     // Connect to Server
-    private boolean start(){
+    private boolean connectToServer(){
         // Try to Connect to Server
 
         try {
@@ -332,7 +273,7 @@ public class IM_Client {
 
 
         // creates the Thread to listen from the server
-        new ListenForServer().start();
+        new ListenForServer().connectToServer();
         // Send our username to the server this is the only message that we
         // will send as a String. All other messages will be ChatMessage objects
         try

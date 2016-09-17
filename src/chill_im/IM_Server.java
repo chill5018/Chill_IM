@@ -22,15 +22,7 @@ public class IM_Server {
     // the boolean that will be turned of to stop the server
     private boolean keepGoing;
 
-
-    /*
-     *  server constructor that receive the port to listen to for connection as parameter
-     *  in console
-     */
-//    public IM_Server(int port) {
-//        this.port = port;
-//    }
-
+    
     public IM_Server(int port) {
         // the port
         this.port = port;
@@ -40,7 +32,16 @@ public class IM_Server {
         al = new ArrayList<ClientThread>();
     }
 
-    public void start() {
+    public static void main(String[] args) {
+        // connectToServer server on port 1500 unless a PortNumber is specified
+        int portNumber = 1234;
+
+        // create a server object and connectToServer it
+        IM_Server server = new IM_Server(portNumber);
+        server.startServer();
+    }
+
+    public void startServer() {
         keepGoing = true;
 		/* create socket server and wait for connection requests */
         try
@@ -87,31 +88,15 @@ public class IM_Server {
             display(msg);
         }
     }
-    /*
-     * For the GUI to stop the server
-     */
-    protected void stop() {
-        keepGoing = false;
-        // connect to myself as Client to exit statement
-        // Socket socket = serverSocket.accept();
-        try {
-            new Socket("localhost", port);
-        }
-        catch(Exception e) {
-            // nothing I can really do
-        }
-    }
-    /*
-     * Display an event (not a message) to the console or the GUI
-     */
+
+    // To Display something to the console only
     private void display(String msg) {
         String time = sdf.format(new Date()) + " " + msg;
         System.out.println(time);
 
     }
-    /*
-     *  to broadcast a message to all Clients
-     */
+
+    // To Share with all connected users
     private synchronized void broadcast(String message) {
         // add HH:mm:ss and \n to the message
         String time = sdf.format(new Date());
@@ -121,8 +106,7 @@ public class IM_Server {
         System.out.print(messageLf);
 
 
-        // we loop in reverse order in case we would have to remove a Client
-        // because it has disconnected
+        // loop in reverse order in case we have to remove a Client
         for(int i = al.size(); --i >= 0;) {
             ClientThread ct = al.get(i);
             // try to write to the Client if it fails remove it from the list
@@ -146,36 +130,6 @@ public class IM_Server {
         }
     }
 
-    /*
-     *  To run as a console application just open a console window and:
-     * > java Server
-     * > java Server portNumber
-     * If the port number is not specified 1500 is used
-     */
-    public static void main(String[] args) {
-        // start server on port 1500 unless a PortNumber is specified
-        int portNumber = 1500;
-        switch(args.length) {
-            case 1:
-                try {
-                    portNumber = Integer.parseInt(args[0]);
-                }
-                catch(Exception e) {
-                    System.out.println("Invalid port number.");
-                    System.out.println("Usage is: > java Server [portNumber]");
-                    return;
-                }
-            case 0:
-                break;
-            default:
-                System.out.println("Usage is: > java Server [portNumber]");
-                return;
-
-        }
-        // create a server object and start it
-        IM_Server server = new IM_Server(portNumber);
-        server.start();
-    }
 
     /** One instance of this thread will run for each client */
     class ClientThread extends Thread {
@@ -219,7 +173,7 @@ public class IM_Server {
             date = new Date().toString() + "\n";
         }
 
-        // what will run forever
+        // what needs to run forever?
         public void run() {
             // to loop until LOGOUT
             boolean keepGoing = true;
@@ -281,9 +235,8 @@ public class IM_Server {
             catch (Exception e) {}
         }
 
-        /*
-         * Write a String to the Client output stream
-         */
+
+        // Write a String to the Client output stream
         private boolean writeMsg(String msg) {
             // if Client is still connected send the message to it
             if(!socket.isConnected()) {
@@ -422,7 +375,7 @@ public class IM_Server {
 
                     // 2: Create new Client Handler Thread to listen to Clients
                     Thread listener = new Thread(new ClientHandler(clientSocket, clientWriter));
-                    listener.start();
+                    listener.connectToServer();
 
                     System.out.println("Contact Made... but who is there?");
 
