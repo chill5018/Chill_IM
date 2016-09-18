@@ -1,100 +1,142 @@
 package chill_im;
 
+/**
+ * Created by chill on 9/10/16.
+ */
+
+
 import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Scanner;
 
-/**
- * Created by chill on 9/17/16.
- */
+import static chill_im.IM_Server.*;
+
 
 public class IM_Server {
-    // a unique ID for each connection
-    private static int uniqueId;
-    // an ArrayList to keep the list of the Client
-    private ArrayList<ClientThread> al;
-    // to display time
-    private SimpleDateFormat sdf;
-    // the port number to listen for connection
-    private int port;
-    // the boolean that will be turned of to stop the server
-    private boolean keepGoing;
+    private static ServerSocket serverSocket;
+    private static final int PORT = 1234;
+    private static int port = 1234;
+    static ArrayList<ClientHandler> clients;
+    private static ArrayList<String> usernames;
+    private static boolean keepGoing = false;
 
-    
+    static SimpleDateFormat sdf;
+
     private IM_Server(int port) {
-        // the port
         this.port = port;
-        // to display hh:mm:ss
         sdf = new SimpleDateFormat("HH:mm:ss");
-        // ArrayList for the Client list
-        al = new ArrayList<ClientThread>();
+        clients = new ArrayList<>();
     }
+
 
     public static void main(String[] args) {
-        // connectToServer server on port 1500 unless a PortNumber is specified
-        int portNumber = 1234;
+        try {
+            sdf = new SimpleDateFormat("HH:mm:ss");
+            usernames = new ArrayList<>();
+            clients = new ArrayList<>();
+            serverSocket = new ServerSocket(PORT);
+            keepGoing = true;
 
-        // create a server object and connectToServer it
-        IM_Server server = new IM_Server(portNumber);
-        server.startServer();
+        } catch (IOException ioEX) {
+            display("\nUnable to set up port!");
+            System.exit(1);
+        }
+        do {
+            // Infinite loop Waiting for Clients....
+            Socket socket = null;
+            try {
+                socket = serverSocket.accept();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            display("\nNew Client Attempting to connect...\n");
+
+            display("HostName: " + socket.getInetAddress().getHostName());
+
+            // Create a thread to handle communication with clientSocket
+            // Pass the constructor for this thread, A reference
+            // to the relevant socket...
+
+            ClientHandler handler = new ClientHandler(socket);
+            handler.start();
+
+            // Keep List of "Clients" / Threads
+            clients.add(handler);
+//            System.out.println(clients);
+//            System.out.println(usernames);
+
+        } while (keepGoing);
+        // KeepGoing == False --> Close Connection
+        try {
+            serverSocket.close();
+            for (ClientHandler tc : clients)
+                try {
+                    tc.inputClient.close();
+                    tc.outputClient.close();
+                    tc.clientSocket.close();
+                } catch (IOException ignored) {}
+        }
+        catch(Exception e) {
+            display("Exception closing the server and clients: " + e);
+        }
     }
 
-    private void startServer() {
-        keepGoing = true;
-		/* create socket server and wait for connection requests */
-        try
-        {
-            // the socket used by the server
-            ServerSocket serverSocket = new ServerSocket(port);
+    static String validateIncoming(String incoming) {
+        System.out.println("String to Validate: " + incoming);
 
-            // infinite loop to wait for connections
-            while(keepGoing)
-            {
-                // format message saying we are waiting
-                display("Server waiting for Clients on port " + port + ".");
+        String username ="";
+        String hostIP ="";
+        String port ="";
+        String cmd = "";
 
-                Socket socket = serverSocket.accept();  	// accept connection
+        Scanner token = new Scanner(incoming);
 
-                // if I was asked to stop
-                if(!keepGoing)
-                    break;
-                ClientThread t = new ClientThread(socket);  // make a thread of it
-//                al.add(t);		// Do this elsewhere
-                t.start();
-            }
-            // KeepGoing == False --> Close Connection
-            try {
-                serverSocket.close();
-                for (ClientThread tc : al)
-                    try {
-                        tc.sInput.close();
-                        tc.sOutput.close();
-                        tc.socket.close();
-                    } catch (IOException ignored) {}
-            }
-            catch(Exception e) {
-                display("Exception closing the server and clients: " + e);
+        while (token.hasNext()) {
+            cmd = token.next();
+            username = token.next();
+            String bufferToken = token.next();
+            hostIP = token.next();
+            bufferToken += token.next();
+            port = token.next();
+
+
+        }
+
+        System.out.println("CMD: "+ cmd);
+        System.out.println("User: "+ username);
+        System.out.println("Host: "+ hostIP);
+        System.out.println("Port: "+ port);
+
+        for (String s : usernames) {
+            if(s.toLowerCase().equals(username.toLowerCase())) {
+                return "J_ERR";
             }
         }
-        // something went bad
-        catch (IOException e) {
-            String msg = sdf.format(new Date()) + " Exception on new ServerSocket: " + e + "\n";
-            display(msg);
+        usernames.add(username);
+        return "J_OK";
+    }
+
+    // for a clientSocket who logoff using the QUIT message
+    static synchronized void removeUserFromList(String username) {
+        for (int i = 0; i < usernames.size() ; i++) {
+            if (username.toLowerCase().equals(usernames.get(i).toLowerCase()))
+                usernames.remove(i);
         }
     }
 
     // To Display something to the console only
-    private void display(String msg) {
+    static void display(String msg) {
         String time = sdf.format(new Date()) + " " + msg;
         System.out.println(time);
 
     }
 
     // To Share with all connected users
-    private synchronized void broadcast(String message) {
+    static synchronized void broadcast(String message) {
         // add HH:mm:ss and \n to the message
         String time = sdf.format(new Date());
         String messageLf = time + " " + message + "\n";
@@ -104,378 +146,135 @@ public class IM_Server {
 
 
         // loop in reverse order in case we have to remove a Client
-        for(int i = al.size(); --i >= 0;) {
-            ClientThread ct = al.get(i);
+        for(int i = clients.size(); --i >= 0;) {
+            ClientHandler ct = clients.get(i);
             // try to write to the Client if it fails remove it from the list
             if(!ct.writeMsg(messageLf)) {
-                al.remove(i);
+                clients.remove(i);
                 display("Disconnected Client " + ct.username + " removed from list.");
             }
         }
     }
 
-    // for a client who logoff using the QUIT message
-    private synchronized void remove(int id) {
-        // scan the array list until we found the Id
-        for(int i = 0; i < al.size(); ++i) {
-            ClientThread ct = al.get(i);
-            // found it
-            if(ct.id == id) {
-                al.remove(i);
-                return;
-            }
-        }
-    }
-
-
-    /** One instance of this thread will run for each client */
-    private class ClientThread extends Thread {
-        // the socket where to listen/talk
-        Socket socket;
-        ObjectInputStream sInput;
-        ObjectOutputStream sOutput;
-        // unique id (easier for deconnection)
-        int id;
-        // the Username of the Client
-        String username;
-        // the only type of message a will receive
-        ChatMessage cm;
-        // the date of connection
-        String date;
-
-        // Constructor
-        ClientThread(Socket socket) {
-            // a unique id
-            id = ++uniqueId;
-            this.socket = socket;
-
-			/* Creating both Data Stream */
-            System.out.println("Thread trying to create Object Input/Output Streams");
-            try
-            {
-                // create output first
-                sOutput = new ObjectOutputStream(socket.getOutputStream());
-                sInput  = new ObjectInputStream(socket.getInputStream());
-                // read the username
-
-                username = (String) sInput.readObject();
-                display(username + " just connected.");
-            }
-            catch (IOException e) {
-                display("Exception creating new Input/output Streams: " + e);
-                return;
-            }
-            catch (ClassNotFoundException ignored) {
-            }
-            date = new Date().toString() + "\n";
-        }
-
-        // what needs to run forever?
-        public void run() {
-            // to loop until LOGOUT
-            boolean keepGoing = true;
-            while(keepGoing) {
-                // read a String (which is an object)
-                try {
-                    cm = (ChatMessage) sInput.readObject();
-                }
-                catch (IOException e) {
-                    display(username + " Exception reading Streams: " + e);
-                    break;
-                }
-                catch(ClassNotFoundException e2) {
-                    break;
-                }
-                // the message part of the ChatMessage
-                String message = cm.getMessage();
-
-                // Switch on the type of message receive
-                switch(cm.getType()) {
-
-                    case ChatMessage.JOIN:
-                        for(int i = 0; i < al.size(); ++i) {
-                            if (!al.get(i).username.toLowerCase()
-                                    .equals(username.toLowerCase())) {
-                                try {
-                                    al.add(new ClientThread(new Socket(socket.getInetAddress().getHostAddress(), socket.getPort()), username))
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-
-                        break;
-                    case ChatMessage.DATA:
-                        broadcast(username + ": " + message);
-                        break;
-                    case ChatMessage.QUIT:
-                        display(username + " disconnected with a LOGOUT message.");
-                        keepGoing = false;
-                        break;
-                    case ChatMessage.LIST:
-                        writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
-                        // scan al the users connected
-                        for(int i = 0; i < al.size(); ++i) {
-                            ClientThread ct = al.get(i);
-                            writeMsg((i+1) + ") " + ct.username + " since " + ct.date);
-                        }
-                        break;
-                }
-            }
-            // remove myself from the arrayList containing the list of the
-            // connected Clients
-            remove(id);
-            close();
-        }
-
-        // try to close everything
-        private void close() {
-            // try to close the connection
-            try {
-                if(sOutput != null) sOutput.close();
-            }
-            catch(Exception ignored) {}
-            try {
-                if(sInput != null) sInput.close();
-            }
-            catch(Exception ignored) {}
-            try {
-                if(socket != null) socket.close();
-            }
-            catch (Exception ignored) {}
-        }
-
-
-        // Write a String to an Individual Client output stream
-        private boolean writeMsg(String msg) {
-            // if Client is still connected send the message to them
-            if(!socket.isConnected()) {
-                close();
-                return false;
-            }
-            // write the message to the stream
-            try {
-                sOutput.writeObject(msg);
-            }
-            // if an error occurs do not abort, just inform the user
-            catch(IOException e) {
-                display("Error sending message to " + username);
-                display(e.toString());
-            }
-            return true;
-        }
-    }
 }
 
+class ClientHandler extends Thread{
+    Socket clientSocket;
+    Scanner inputClient; // Handles inputClient from Client
+    PrintWriter outputClient; // Handles outputClient from Server
+
+    String username;
+
+    // the date of connection
+    String date;
+
+    ClientHandler(Socket socket){
+        //Set up reference to associated socket..
+        this.clientSocket = socket;
+
+        try {
+            // Create output first
+            outputClient = new PrintWriter(clientSocket.getOutputStream(), true);
+            inputClient = new Scanner(clientSocket.getInputStream());
 
 
+        } catch (IOException ioEx){
+            ioEx.printStackTrace();
+        }
 
-    /*
-    public static void main(String[] args) {
-        clientOutputStreams = new ArrayList();
-        users = new ArrayList<>();
-
-        // 1: Start the Server
-        IMServer server = new IMServer();
-        server.run();
+        date = new Date().toString() + "\n";
     }
 
-    // TODO: Move this to a separate File
-    // 2: Client Handler START
-    public static class ClientHandler implements Runnable {
-        Socket clientSocket;      // the clients socket
-        PrintWriter clientWriter; // the clients incoming message
-        BufferedReader reader;    // to Read incoming messages
+    public void run(){
+        String received;
 
+        do {
+            //Accept Messages from Client on the Socket's Input stream...
+            received = inputClient.nextLine();
 
-        public ClientHandler(Socket clientSocket, PrintWriter clientWriter) {
-            this.clientSocket = clientSocket;
-            this.clientWriter = clientWriter;
+            // Log What the Users says
+            System.out.println(clientSocket.getInetAddress() + ": " + received);
 
-            try {
-                // 2.1: Get the incoming message sent by the client
-                InputStreamReader isReader = new InputStreamReader(clientSocket.getInputStream());
+            // Create a token Scanner to reac the first TOKEN == Keyword
+            Scanner token = new Scanner(received);
 
-                // 2.2: Read the incoming message sent by the client
-                reader = new BufferedReader(isReader);
-            } catch (IOException io){
-                System.out.println("Unexpected Error ");
-            }
-        }
+            String cmd = token.next();
+            System.out.println("Command: "+ cmd);
 
-        @Override
-        public void run() {
-            String message;
-            try {
-                do {
-
-                    // 2.1: Get the incoming message sent by the client
-                    InputStreamReader isReader = new InputStreamReader(clientSocket.getInputStream());
-
-                    // 2.2: Read the incoming message sent by the client
-                    reader = new BufferedReader(isReader);
-
-                    // 2.3: Assign the message stored on the Buffered reader to a string
-                    message = reader.readLine();
-
-                    // 2.4: Create a token Scanner to read the first TOKEN == Keyword
-                    Scanner token = new Scanner(message);
-                    String cmd = token.next();
-                    System.out.println("CMD: " + cmd);
-
-                    // 2.5: Protocol Switch --> Determines how to handle the incoming message
-                    // based on the command token that was sent
-                    switch (cmd) {
-                        case "JOIN":
-                            if (addUser(message)) {
-                                tellUser("J_OK", clientWriter);
-                                tellEveryone("LIST " + LIST());
-                            } else {
-                                tellUser("J_ERR", clientWriter);
-                            }
-                            break;
-                        case "DATA":
-                            tellEveryone(message.substring(4, message.length()));
-                            break;
-                        case "ALVE":
-                            break;
-                        case "QUIT":
-                            // Remove User
-                            break;
-                        default:
-                            System.out.println("Input was not recognized by the server...");
-                            break;
+            // Create a a switch based on the command tokens SENT FROM CLIENT
+            switch (cmd){
+                case "JOIN":
+                    username =  token.next();
+                    writeMsg(validateIncoming(received));
+                    break;
+                case "DATA":
+                    // Echo Message Back to ALL clients on the sockets outputClient stream
+                    broadcast("> " + received);
+                    break;
+                case "QUIT":
+                    // Remove User from List of Users
+                    String username = token.next();
+                    System.out.println("User to Remove: "+ username);
+                    removeUserFromList(username);
+                    outputClient.println("GoodBye!");
+                    break;
+                case "ALVE":
+                    // Receive Clients HearBeat --> confirm clientSocket is alive
+                    break;
+                case "LIST":
+                    writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
+                    // scan al the users connected
+                    for(int i = 0; i < clients.size(); ++i) {
+                        ClientHandler ct = clients.get(i);
+                        writeMsg((i+1) + ") " + ct.username + " since " + ct.date);
                     }
-                } while (true);
-
-            } catch (IOException io){
-                io.printStackTrace();
             }
 
-        }
-    } // End --> ClientHandler
+            // Repeat above until QUIT sent by clientSocket
+        }while (!received.equals("QUIT"));
 
+        try {
+            if (clientSocket != null) {
+                System.out.println("Closing down connection ...");
 
-
-    // Server Thread
-    public static class IMServer implements Runnable {
-        @Override
-        public  void run() {
-
-            clientOutputStreams = new ArrayList();
-
-
-            try {
-                // 1.1: "Create the server"
-                ServerSocket serverSocket = new ServerSocket(1234);
-
-                do {
-                    // 1.2: Accept incoming client connections
-                    Socket clientSocket = serverSocket.accept();
-
-                    // 1.3: Get the clients outputWriter (meaning messages client sends to server)
-                    PrintWriter clientWriter = new PrintWriter(clientSocket.getOutputStream());
-
-                    // 1.4: Add client Writer to the list of client output streams
-                    clientOutputStreams.add(clientWriter);
-
-                    // 2: Create new Client Handler Thread to listen to Clients
-                    Thread listener = new Thread(new ClientHandler(clientSocket, clientWriter));
-                    listener.connectToServer();
-
-                    System.out.println("Contact Made... but who is there?");
-
-                } while (true);
-
-
-            } catch (IOException io) {
-                System.out.println("Error Making Connection...");
+                clientSocket.close();
             }
-
+        } catch (IOException ioEx){
+            System.out.println("Unable to disconnect!");
         }
     }
 
 
-        // Create all Protocol Methods
-        // Verify User is Unique
-        public static boolean addUser(String data) {
-            String username ="";
-            String hostIP ="";
-            String port ="";
-            String cmd = "";
-
-            Scanner token = new Scanner(data);
-
-            while (token.hasNext()) {
-                cmd = token.next();
-                username = token.next();
-                String bufferToken = token.next();
-                hostIP = token.next();
-                bufferToken += token.next();
-                port = token.next();
-            }
-
-            // User Details for Logging Purposes
-            // TODO: Remove this in Production
-            System.out.println("User: "+ username);
-            System.out.println("Host: "+ hostIP);
-            System.out.println("Port: "+ port +"\n");
-
-
-            // Check to see if the name already exists
-            if (!users.isEmpty()) {
-                for (String s : users) {
-                    if (s.toLowerCase().equals(username.toLowerCase())) {
-                        // User is not unique --> Try again
-                        return false;
-                    }
-                }
-            }
-
-            // User is unique --> add them to the list
-            users.add(username);
-            return true;
+    // try to close everything
+    private void close() {
+        // try to close the connection
+        try {
+            if(outputClient != null) outputClient.close();
         }
-
-        // User Remove
-
-        // List
-        public static String LIST() {
-            String result = "Currently in the chat room: ";
-            for (String s: users) {
-                result +=  s + ", ";
-            }
-            return result;
+        catch(Exception ignored) {}
+        try {
+            if(inputClient != null) inputClient.close();
         }
+        catch(Exception ignored) {}
+        try {
+            if(clientSocket != null) clientSocket.close();
+        }
+        catch (Exception ignored) {}
+    }
 
-        // Tell User
-        public static void tellUser(String message, PrintWriter clientWriter) {
+    // Write a String to an Individual Client outputClient stream
+    boolean writeMsg(String msg) {
+        // if Client is still connected send the message to them
+        if(!clientSocket.isConnected()) {
             try {
-                clientWriter.println(message);
-                clientWriter.flush();
-
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-                catch (Exception ex)
-            {
-                System.out.println("Error telling user. \n");
-            }
+            return false;
         }
-
-        // Tell Everyone
-        public static void tellEveryone(String message) {
-
-            for (Object clientOutputStream : clientOutputStreams) {
-                try {
-                    PrintWriter writer = (PrintWriter) clientOutputStream;
-                    writer.println(message);
-                    writer.flush();
-
-                } catch (Exception ex) {
-                    System.out.println("Error telling everyone. \n");
-                }
-            }
-        }
-            // ALVE
+        // write the message to the stream
+        outputClient.println(msg);
+        return true;
+    }
 }
-
-    */
