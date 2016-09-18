@@ -55,8 +55,6 @@ public class IM_Server {
 
             display("\nNew Client Attempting to connect...\n");
 
-            display("HostName: " + socket.getInetAddress().getHostName());
-
             // Create a thread to handle communication with clientSocket
             // Pass the constructor for this thread, A reference
             // to the relevant socket...
@@ -66,8 +64,6 @@ public class IM_Server {
 
             // Keep List of "Clients" / Threads
             clients.add(handler);
-//            System.out.println(clients);
-//            System.out.println(usernames);
 
         } while (keepGoing);
         // KeepGoing == False --> Close Connection
@@ -111,9 +107,16 @@ public class IM_Server {
         System.out.println("Host: "+ hostIP);
         System.out.println("Port: "+ port);
 
-        for (String s : usernames) {
-            if(s.toLowerCase().equals(username.toLowerCase())) {
-                return "J_ERR";
+
+            int count = 0;
+        for (int i = 0; i < clients.size() ; i++) {
+            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase())) {
+                count++;
+                if (count == 2) {
+                    // If the most recent is already in the list then remove it
+                    clients.remove(i);
+                    return "J_ERR";
+                }
             }
         }
         usernames.add(username);
@@ -122,8 +125,8 @@ public class IM_Server {
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {
-        for (int i = 0; i < usernames.size() ; i++) {
-            if (username.toLowerCase().equals(usernames.get(i).toLowerCase()))
+        for (int i = 0; i < clients.size() ; i++) {
+            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase()))
                 usernames.remove(i);
         }
     }
@@ -209,14 +212,16 @@ class ClientHandler extends Thread{
                     break;
                 case "DATA":
                     // Echo Message Back to ALL clients on the sockets outputClient stream
-                    broadcast("> " + received);
+                    broadcast("> " + received.substring(4, received.length()));
                     break;
                 case "QUIT":
                     // Remove User from List of Users
                     String username = token.next();
-                    System.out.println("User to Remove: "+ username);
+                    writeMsg("GoodBye!");
+                    display("User to Remove: "+ username);
                     removeUserFromList(username);
-                    outputClient.println("GoodBye!");
+                    close();
+
                     break;
                 case "ALVE":
                     // Receive Clients HearBeat --> confirm clientSocket is alive
