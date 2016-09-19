@@ -20,7 +20,6 @@ public class IM_Server {
     private static final int PORT = 1234;
     private static int port = 1234;
     static ArrayList<ClientHandler> clients;
-    private static ArrayList<String> usernames;
     private static boolean keepGoing = false;
 
     static SimpleDateFormat sdf;
@@ -35,14 +34,14 @@ public class IM_Server {
     public static void main(String[] args) {
         try {
             sdf = new SimpleDateFormat("HH:mm:ss");
-            usernames = new ArrayList<>();
+//            usernames = new ArrayList<>();
             clients = new ArrayList<>();
             serverSocket = new ServerSocket(PORT);
             keepGoing = true;
 
         } catch (IOException ioEX) {
             display("\nUnable to set up port!");
-            System.exit(1);
+            System.exit(1); // Possible Change this? 
         }
         do {
             // Infinite loop Waiting for Clients....
@@ -62,11 +61,13 @@ public class IM_Server {
             ClientHandler handler = new ClientHandler(socket);
             handler.start();
 
-            // Keep List of "Clients" / Threads
+            // Add to List of "Clients" / Threads
+            // regardless of validation status
             clients.add(handler);
 
         } while (keepGoing);
-        // KeepGoing == False --> Close Connection
+
+        // When KeepGoing == False --> Close Connection
         try {
             serverSocket.close();
             for (ClientHandler tc : clients)
@@ -101,12 +102,10 @@ public class IM_Server {
 
 
         }
-
         System.out.println("CMD: "+ cmd);
         System.out.println("User: "+ username);
         System.out.println("Host: "+ hostIP);
         System.out.println("Port: "+ port);
-
 
             int count = 0;
         for (int i = 0; i < clients.size() ; i++) {
@@ -114,21 +113,21 @@ public class IM_Server {
                 count++;
                 if (count == 2) {
                     // If the most recent is already in the list then remove it
-                    clients.remove(i);
+                    removeUserFromList(username);
                     return "J_ERR";
                 }
             }
         }
-        usernames.add(username);
         return "J_OK";
     }
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {
         for (int i = 0; i < clients.size() ; i++) {
-            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase()))
-                usernames.remove(i);
+            if (clients.get(i).username.toLowerCase().equals(username.toLowerCase()))
+                clients.remove(i);
         }
+        keepGoing = false;
     }
 
     // To Display something to the console only
@@ -208,6 +207,7 @@ class ClientHandler extends Thread{
             switch (cmd){
                 case "JOIN":
                     username =  token.next();
+                    // Returns J_OK or J_ERR
                     writeMsg(validateIncoming(received));
                     break;
                 case "DATA":
@@ -217,11 +217,10 @@ class ClientHandler extends Thread{
                 case "QUIT":
                     // Remove User from List of Users
                     String username = token.next();
-                    writeMsg("GoodBye!");
+                    writeMsg("QUIT GoodBye!");
                     display("User to Remove: "+ username);
                     removeUserFromList(username);
                     close();
-
                     break;
                 case "ALVE":
                     // Receive Clients HearBeat --> confirm clientSocket is alive
