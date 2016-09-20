@@ -16,13 +16,13 @@ public class IM_Client {
     private static Scanner networkInput;
     private static PrintWriter networkOutput;
 
-    static boolean isConnected = false;
+    static boolean isConnected = true;
 
     public IM_Client(Socket socket, String userName) {
         host = socket;
         IM_Client.userName = userName;
     }
-    // Client has a thread to send Heart Beat to the Server
+    // Client needs a thread to send Heart Beat to the Server
 
     public static void main(String[] args) {
         setUserName();
@@ -42,12 +42,13 @@ public class IM_Client {
             // read message from user
             String msg = scan.nextLine();
 
+
             // logout if message is QUIT
             if(msg.equals("QUIT")) {
                 sendMessage("QUIT "+userName);
                 isConnected = false;
                 break;
-            // See all active users
+                // See all active users
             } else if(msg.equals("LIST")) {
                 sendMessage("LIST");
             } else if (msg.length() > 250) {
@@ -165,7 +166,7 @@ public class IM_Client {
     private class ListenFromServer extends Thread {
 
         public void run() {
-            while(true) {
+            while(isConnected) {
                 String msg = networkInput.nextLine();
 
                 // RECEIVED PROTOCOLS

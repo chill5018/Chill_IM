@@ -4,16 +4,10 @@ package chill_im;
  * Created by chill on 9/10/16.
  */
 
-
 import java.io.*;
 import java.net.*;
+import java.util.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Scanner;
-
-import static chill_im.IM_Server.*;
-
 
 public class IM_Server {
     private static ServerSocket serverSocket;
@@ -34,14 +28,13 @@ public class IM_Server {
     public static void main(String[] args) {
         try {
             sdf = new SimpleDateFormat("HH:mm:ss");
-//            usernames = new ArrayList<>();
             clients = new ArrayList<>();
             serverSocket = new ServerSocket(PORT);
             keepGoing = true;
 
         } catch (IOException ioEX) {
             display("\nUnable to set up port!");
-            System.exit(1); // Possible Change this? 
+            System.exit(1);
         }
         do {
             // Infinite loop Waiting for Clients....
@@ -52,7 +45,7 @@ public class IM_Server {
                 e.printStackTrace();
             }
 
-            display("\nNew Client Attempting to connect...\n");
+            display("\nNew Client Attempting to connect...");
 
             // Create a thread to handle communication with clientSocket
             // Pass the constructor for this thread, A reference
@@ -61,13 +54,11 @@ public class IM_Server {
             ClientHandler handler = new ClientHandler(socket);
             handler.start();
 
-            // Add to List of "Clients" / Threads
-            // regardless of validation status
+            // Keep List of "Clients" / Threads
             clients.add(handler);
 
         } while (keepGoing);
-
-        // When KeepGoing == False --> Close Connection
+        // KeepGoing == False --> Close Connection
         try {
             serverSocket.close();
             for (ClientHandler tc : clients)
@@ -95,25 +86,25 @@ public class IM_Server {
         while (token.hasNext()) {
             cmd = token.next();
             username = token.next();
-            String bufferToken = token.next();
+            //String bufferToken = token.next();
             hostIP = token.next();
-            bufferToken += token.next();
+            //bufferToken += token.next();
             port = token.next();
-
-
         }
+
         System.out.println("CMD: "+ cmd);
         System.out.println("User: "+ username);
         System.out.println("Host: "+ hostIP);
         System.out.println("Port: "+ port);
 
-            int count = 0;
+
+        int count = 0;
         for (int i = 0; i < clients.size() ; i++) {
             if (username.toLowerCase().equals(clients.get(i).username.toLowerCase())) {
                 count++;
                 if (count == 2) {
                     // If the most recent is already in the list then remove it
-                    removeUserFromList(username);
+                    clients.remove(i);
                     return "J_ERR";
                 }
             }
@@ -123,11 +114,12 @@ public class IM_Server {
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {
-        for (int i = 0; i < clients.size() ; i++) {
-            if (clients.get(i).username.toLowerCase().equals(username.toLowerCase()))
-                clients.remove(i);
+        int index;
+        for (index = 0; index < clients.size() ; index++) {
+            if (username.toLowerCase().equals(clients.get(index).username.toLowerCase()))
+                break;
         }
-        keepGoing = false;
+        clients.remove(index);
     }
 
     // To Display something to the console only
@@ -144,7 +136,7 @@ public class IM_Server {
         String messageLf = time + " " + message + "\n";
         // display message on console or GUI
 
-        System.out.print(messageLf);
+        //System.out.print(messageLf);
 
 
         // loop in reverse order in case we have to remove a Client
@@ -158,127 +150,4 @@ public class IM_Server {
         }
     }
 
-}
-
-class ClientHandler extends Thread{
-    Socket clientSocket;
-    Scanner inputClient; // Handles inputClient from Client
-    PrintWriter outputClient; // Handles outputClient from Server
-
-    String username;
-
-    // the date of connection
-    String date;
-
-    ClientHandler(Socket socket){
-        //Set up reference to associated socket..
-        this.clientSocket = socket;
-
-        try {
-            // Create output first
-            outputClient = new PrintWriter(clientSocket.getOutputStream(), true);
-            inputClient = new Scanner(clientSocket.getInputStream());
-
-
-        } catch (IOException ioEx){
-            ioEx.printStackTrace();
-        }
-
-        date = new Date().toString() + "\n";
-    }
-
-    public void run(){
-        String received;
-
-        do {
-            //Accept Messages from Client on the Socket's Input stream...
-            received = inputClient.nextLine();
-
-            // Log What the Users says
-            System.out.println(clientSocket.getInetAddress() + ": " + received);
-
-            // Create a token Scanner to reac the first TOKEN == Keyword
-            Scanner token = new Scanner(received);
-
-            String cmd = token.next();
-            System.out.println("Command: "+ cmd);
-
-            // Create a a switch based on the command tokens SENT FROM CLIENT
-            switch (cmd){
-                case "JOIN":
-                    username =  token.next();
-                    // Returns J_OK or J_ERR
-                    writeMsg(validateIncoming(received));
-                    break;
-                case "DATA":
-                    // Echo Message Back to ALL clients on the sockets outputClient stream
-                    broadcast("> " + received.substring(4, received.length()));
-                    break;
-                case "QUIT":
-                    // Remove User from List of Users
-                    String username = token.next();
-                    writeMsg("QUIT GoodBye!");
-                    display("User to Remove: "+ username);
-                    removeUserFromList(username);
-                    close();
-                    break;
-                case "ALVE":
-                    // Receive Clients HearBeat --> confirm clientSocket is alive
-                    break;
-                case "LIST":
-                    writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
-                    // scan al the users connected
-                    for(int i = 0; i < clients.size(); ++i) {
-                        ClientHandler ct = clients.get(i);
-                        writeMsg((i+1) + ") " + ct.username + " since " + ct.date);
-                    }
-            }
-
-            // Repeat above until QUIT sent by clientSocket
-        }while (!received.equals("QUIT"));
-
-        try {
-            if (clientSocket != null) {
-                System.out.println("Closing down connection ...");
-
-                clientSocket.close();
-            }
-        } catch (IOException ioEx){
-            System.out.println("Unable to disconnect!");
-        }
-    }
-
-
-    // try to close everything
-    private void close() {
-        // try to close the connection
-        try {
-            if(outputClient != null) outputClient.close();
-        }
-        catch(Exception ignored) {}
-        try {
-            if(inputClient != null) inputClient.close();
-        }
-        catch(Exception ignored) {}
-        try {
-            if(clientSocket != null) clientSocket.close();
-        }
-        catch (Exception ignored) {}
-    }
-
-    // Write a String to an Individual Client outputClient stream
-    boolean writeMsg(String msg) {
-        // if Client is still connected send the message to them
-        if(!clientSocket.isConnected()) {
-            try {
-                clientSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return false;
-        }
-        // write the message to the stream
-        outputClient.println(msg);
-        return true;
-    }
 }
