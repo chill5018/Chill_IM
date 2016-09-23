@@ -65,26 +65,28 @@ public class IM_Server {
         }
     }
 
-//    static String validateIncoming(String incoming) {
-//        //System.out.println("String to Validate: " + incoming);
-//
-//        String token1 = "",username = "";
-//
-//        Scanner token = new Scanner(incoming);
-//
-//        token1 = token.next();
-//        username = token.next();
-//
-//        System.out.println("User: "+ username);
-//
-//
-//        for (int i = 0; i < clients.size() ; i++) {
-//            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase())) {
-//                return "J_ERR";
-//            }
-//        }
-//        return "J_OK";
-//    }
+    static boolean validateIncoming(String incoming) {
+        //System.out.println("String to Validate: " + incoming);
+
+        String token1 = "", username = "";
+
+        Scanner token = new Scanner(incoming);
+
+        token1 = token.next();
+        username = token.next();
+
+        System.out.println("User: "+ username.substring(0,username.length()-1));
+
+        int count = 0;
+
+        for (ClientHandler client : clients) {
+            if (username.toLowerCase().equals(client.username.toLowerCase()))
+                count++;
+            if (count == 2)
+                return false;
+        }
+        return true;
+    }
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {

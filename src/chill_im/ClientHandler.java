@@ -57,8 +57,16 @@ class ClientHandler extends Thread{
             switch (cmd){
                 case "JOIN":
                     username =  token.next();
-                    //writeMsg(validateIncoming(received));
-                    writeMsg(received);
+                    if (!validateIncoming(received)){
+                        // Tell User there was an Error
+                        writeMsg("J_ERR --> Username Already Exists");
+                        // remove user from server's list
+                        removeUserFromList(username);
+                        // Close the Connection
+                        close();
+                    } else {
+                        writeMsg(received);
+                    }
                     break;
                 case "DATA":
                     // Echo Message Back to ALL clients on the sockets outputClient stream

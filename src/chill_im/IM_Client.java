@@ -125,7 +125,7 @@ public class IM_Client {
         new ListenFromServer().start();
 
         // JOIN Protocol client --> server
-        sendMessage("JOIN "+userName+" , "+host.getInetAddress().getHostAddress()+" : "+
+        sendMessage("JOIN "+userName+", "+host.getInetAddress().getHostAddress()+":"+
                 host.getPort()+"");
 
         isConnected = true;
@@ -133,7 +133,7 @@ public class IM_Client {
         Thread alive = new Thread(() -> {
             while (true) {
                 try {
-                    sendMessage("ALIVE "+userName);
+                    sendMessage("ALVE "+userName);
                     Thread.sleep(1000*60);
                 } catch (Exception e) {}
             }
@@ -185,8 +185,7 @@ public class IM_Client {
                 switch (msg) {
                     case "J_ERR":
                         // validation failed
-                        setUserName();
-                        networkConfigMenu();
+                        display(msg);
                         break;
                     case "J_OK":
                         // validation successful;
