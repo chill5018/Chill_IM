@@ -1,7 +1,7 @@
 package chill_im;
 
 /**
- * Created by chill on 9/10/16.
+ * Created by chill / doggy on 9/10/16.
  */
 
 import java.io.*;
@@ -129,6 +129,16 @@ public class IM_Client {
                 host.getPort()+"");
 
         isConnected = true;
+
+        Thread alive = new Thread(() -> {
+            while (true) {
+                try {
+                    sendMessage("ALIVE "+userName);
+                    Thread.sleep(1000*60);
+                } catch (Exception e) {}
+            }
+        });
+        alive.start();
     }
 
 
@@ -157,6 +167,8 @@ public class IM_Client {
             if(host != null) host.close();
         }
         catch(Exception ignored) {}
+
+        System.exit(1);
 
     }
 
@@ -187,8 +199,6 @@ public class IM_Client {
 
                 // Print the message and add back the prompt
                 System.out.println(msg);
-                System.out.print("> ");
-
             }
 
         }

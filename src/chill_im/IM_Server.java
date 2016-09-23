@@ -1,9 +1,8 @@
 package chill_im;
 
 /**
- * Created by chill on 9/10/16.
+ * Created by chill / doggy on 9/10/16.
  */
-
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -12,17 +11,9 @@ import java.text.SimpleDateFormat;
 public class IM_Server {
     private static ServerSocket serverSocket;
     private static final int PORT = 1234;
-    private static int port = 1234;
     static ArrayList<ClientHandler> clients;
     private static boolean keepGoing = false;
-
     static SimpleDateFormat sdf;
-
-    private IM_Server(int port) {
-        this.port = port;
-        sdf = new SimpleDateFormat("HH:mm:ss");
-        clients = new ArrayList<>();
-    }
 
 
     public static void main(String[] args) {
@@ -58,6 +49,7 @@ public class IM_Server {
             clients.add(handler);
 
         } while (keepGoing);
+
         // KeepGoing == False --> Close Connection
         try {
             serverSocket.close();
@@ -73,44 +65,26 @@ public class IM_Server {
         }
     }
 
-    static String validateIncoming(String incoming) {
-        System.out.println("String to Validate: " + incoming);
-
-        String username ="";
-        String hostIP ="";
-        String port ="";
-        String cmd = "";
-
-        Scanner token = new Scanner(incoming);
-
-        while (token.hasNext()) {
-            cmd = token.next();
-            username = token.next();
-            //String bufferToken = token.next();
-            hostIP = token.next();
-            //bufferToken += token.next();
-            port = token.next();
-        }
-
-        System.out.println("CMD: "+ cmd);
-        System.out.println("User: "+ username);
-        System.out.println("Host: "+ hostIP);
-        System.out.println("Port: "+ port);
-
-
-        int count = 0;
-        for (int i = 0; i < clients.size() ; i++) {
-            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase())) {
-                count++;
-                if (count == 2) {
-                    // If the most recent is already in the list then remove it
-                    clients.remove(i);
-                    return "J_ERR";
-                }
-            }
-        }
-        return "J_OK";
-    }
+//    static String validateIncoming(String incoming) {
+//        //System.out.println("String to Validate: " + incoming);
+//
+//        String token1 = "",username = "";
+//
+//        Scanner token = new Scanner(incoming);
+//
+//        token1 = token.next();
+//        username = token.next();
+//
+//        System.out.println("User: "+ username);
+//
+//
+//        for (int i = 0; i < clients.size() ; i++) {
+//            if (username.toLowerCase().equals(clients.get(i).username.toLowerCase())) {
+//                return "J_ERR";
+//            }
+//        }
+//        return "J_OK";
+//    }
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {

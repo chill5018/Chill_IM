@@ -1,7 +1,7 @@
 package chill_im;
 
 /**
- * Created by chill on 9/20/16.
+ * Created by chill / doggy on 9/20/16.
  */
 
 import java.io.*;
@@ -10,9 +10,6 @@ import java.util.*;
 
 import static chill_im.IM_Server.*;
 
-/**
- * Created by Andrei on 19/09/2016.
- */
 class ClientHandler extends Thread{
     Socket clientSocket;
     Scanner inputClient; // Handles inputClient from Client
@@ -21,7 +18,7 @@ class ClientHandler extends Thread{
     String username;
 
     // the date of connection
-    String date;
+    private String date;
 
     ClientHandler(Socket socket){
         //Set up reference to associated socket..
@@ -42,8 +39,6 @@ class ClientHandler extends Thread{
 
     public void run(){
         String received;
-
-        //boolean flag = true;
 
         do {
             //Accept Messages from Client on the Socket's Input stream...
@@ -74,13 +69,15 @@ class ClientHandler extends Thread{
                     String username = token.next();
                     writeMsg("GoodBye!");
                     display("User to Remove: "+ username);
+                    // remove user from server's list
                     removeUserFromList(username);
-                    //flag = false;
+                    // send a message to all users that someone left the chat
+                    broadcast(username+" left the chat.");
                     close();
                     break;
-                case "ALIVE":
-                    // Receive Clients HearBeat --> confirm clientSocket is alive
-                    break;
+//                case "ALIVE":
+//                    // Receive Clients HearBeat --> confirm clientSocket is alive
+//                    break;
                 case "LIST":
                     writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
                     // scan al the users connected
@@ -89,10 +86,6 @@ class ClientHandler extends Thread{
                         writeMsg((i+1) + ") " + ct.username + " since " + ct.date);
                     }
             }
-
-            //if(flag == false)
-            //break;
-
             // Repeat above until QUIT sent by clientSocket
         }while (!received.substring(0,4).equals("QUIT"));
 
@@ -141,4 +134,3 @@ class ClientHandler extends Thread{
         return true;
     }
 }
-
