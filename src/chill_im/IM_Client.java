@@ -16,9 +16,9 @@ public class IM_Client {
     private static Scanner networkInput;
     private static PrintWriter networkOutput;
 
-    static boolean isConnected = true;
+    private static boolean isConnected = true;
 
-    public IM_Client(Socket socket, String userName) {
+    private IM_Client(Socket socket, String userName) {
         host = socket;
         IM_Client.userName = userName;
     }
@@ -48,8 +48,8 @@ public class IM_Client {
                 sendMessage("QUIT "+userName);
                 isConnected = false;
                 break;
-                // See all active users
-            } else if(msg.equals("LIST")) {
+            // See all active users
+            } else if(msg.contains("LIST")) {
                 sendMessage("LIST");
             } else if (msg.length() > 250) {
                 System.out.println("Max 250 Characters!");
@@ -141,7 +141,6 @@ public class IM_Client {
         alive.start();
     }
 
-
     // Show Client a local Message
     private static void display(String msg) {
         System.out.println(msg);
@@ -186,6 +185,9 @@ public class IM_Client {
                     case "J_ERR":
                         // validation failed
                         display(msg);
+                        isConnected = false;
+                        sendMessage("QUIT "+userName);
+                        disconnect();
                         break;
                     case "J_OK":
                         // validation successful;
@@ -195,7 +197,6 @@ public class IM_Client {
                         display(msg);
                         break;
                 }
-
                 // Print the message and add back the prompt
                 System.out.println(msg);
             }

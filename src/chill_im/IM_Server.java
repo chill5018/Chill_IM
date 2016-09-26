@@ -15,14 +15,13 @@ public class IM_Server {
     private static boolean keepGoing = false;
     static SimpleDateFormat sdf;
 
-
     public static void main(String[] args) {
         try {
             sdf = new SimpleDateFormat("HH:mm:ss");
             clients = new ArrayList<>();
             serverSocket = new ServerSocket(PORT);
             keepGoing = true;
-
+            display("Ready to connect at Port: "+ PORT);
         } catch (IOException ioEX) {
             display("\nUnable to set up port!");
             System.exit(1);
@@ -74,26 +73,39 @@ public class IM_Server {
 
         token1 = token.next();
         username = token.next();
+        username = username.substring(0,username.length()-1);
 
-        System.out.println("User: "+ username.substring(0,username.length()-1));
+        System.out.println("User: "+ username);
 
         int count = 0;
 
-        for (ClientHandler client : clients) {
-            if (username.toLowerCase().equals(client.username.toLowerCase()))
+
+        // loop in reverse order in case we have to remove a Client
+        for(int i = 0; i < clients.size(); i++) {
+            ClientHandler ct = clients.get(i);
+
+            if (username.toLowerCase().equals(ct.username.toLowerCase())) {
                 count++;
-            if (count == 2)
-                return false;
+                // If we have two instances then the registration is invalid
+                if (count == 2) {
+                    return false;
+                }
+            }
         }
+
         return true;
     }
 
     // for a clientSocket who logoff using the QUIT message
     static synchronized void removeUserFromList(String username) {
-        int index;
-        for (index = 0; index < clients.size() ; index++) {
-            if (username.toLowerCase().equals(clients.get(index).username.toLowerCase()))
-                break;
+        int index, count = 0;
+        for (index = 0; index <= clients.size() ; index++) {
+            if (clients.get(index).username.toLowerCase().equals(username.toLowerCase())) {
+                count++;
+                if (count == 2) {
+                    break;
+                }
+            }
         }
         clients.remove(index);
     }
@@ -102,7 +114,6 @@ public class IM_Server {
     static void display(String msg) {
         String time = sdf.format(new Date()) + " " + msg;
         System.out.println(time);
-
     }
 
     // To Share with all connected users
@@ -110,10 +121,6 @@ public class IM_Server {
         // add HH:mm:ss and \n to the message
         String time = sdf.format(new Date());
         String messageLf = time + " " + message + "\n";
-        // display message on console or GUI
-
-        //System.out.print(messageLf);
-
 
         // loop in reverse order in case we have to remove a Client
         for(int i = clients.size(); --i >= 0;) {
@@ -125,5 +132,4 @@ public class IM_Server {
             }
         }
     }
-
 }

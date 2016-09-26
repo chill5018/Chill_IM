@@ -14,9 +14,7 @@ class ClientHandler extends Thread{
     Socket clientSocket;
     Scanner inputClient; // Handles inputClient from Client
     PrintWriter outputClient; // Handles outputClient from Server
-
     String username;
-
     // the date of connection
     private String date;
 
@@ -57,15 +55,21 @@ class ClientHandler extends Thread{
             switch (cmd){
                 case "JOIN":
                     username =  token.next();
+                    username = username.substring(0, username.length()-1);
                     if (!validateIncoming(received)){
                         // Tell User there was an Error
                         writeMsg("J_ERR --> Username Already Exists");
                         // remove user from server's list
                         removeUserFromList(username);
+                        try {
+                            clientSocket.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                         // Close the Connection
                         close();
                     } else {
-                        writeMsg(received);
+                        writeMsg("J_OK");
                     }
                     break;
                 case "DATA":
@@ -83,9 +87,6 @@ class ClientHandler extends Thread{
                     broadcast(username+" left the chat.");
                     close();
                     break;
-//                case "ALIVE":
-//                    // Receive Clients HearBeat --> confirm clientSocket is alive
-//                    break;
                 case "LIST":
                     writeMsg("List of the users connected at " + sdf.format(new Date()) + "\n");
                     // scan al the users connected
