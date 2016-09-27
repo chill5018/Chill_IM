@@ -60,7 +60,7 @@ class ClientHandler extends Thread{
                         // Tell User there was an Error
                         writeMsg("J_ERR --> Username Already Exists");
                         // remove user from server's list
-                        removeUserFromList(username);
+                        removeUserFromList(username,2);
                         try {
                             clientSocket.close();
                         } catch (IOException e) {
@@ -82,7 +82,7 @@ class ClientHandler extends Thread{
                     writeMsg("GoodBye!");
                     display("User to Remove: "+ username);
                     // remove user from server's list
-                    removeUserFromList(username);
+                    removeUserFromList(username,1);
                     // send a message to all users that someone left the chat
                     broadcast(username+" left the chat.");
                     close();

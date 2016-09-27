@@ -64,6 +64,7 @@ public class IM_Server {
         }
     }
 
+    // validation to check if the username is unique on our server
     static boolean validateIncoming(String incoming) {
         //System.out.println("String to Validate: " + incoming);
 
@@ -71,11 +72,11 @@ public class IM_Server {
 
         Scanner token = new Scanner(incoming);
 
+        // skip the first token, which should be 'JOIN'
         token1 = token.next();
         username = token.next();
+        // remove the comma from the username
         username = username.substring(0,username.length()-1);
-
-        System.out.println("User: "+ username);
 
         int count = 0;
 
@@ -96,13 +97,14 @@ public class IM_Server {
         return true;
     }
 
-    // for a clientSocket who logoff using the QUIT message
-    static synchronized void removeUserFromList(String username) {
+    // if num is 1 -> a client wrote QUIT and needs to be removed from the list
+    // if num is 2 -> there is a duplicate username, so the last one to join in removed
+    static synchronized void removeUserFromList(String username,int num) {
         int index, count = 0;
         for (index = 0; index <= clients.size() ; index++) {
             if (clients.get(index).username.toLowerCase().equals(username.toLowerCase())) {
                 count++;
-                if (count == 2) {
+                if (count == num) {
                     break;
                 }
             }

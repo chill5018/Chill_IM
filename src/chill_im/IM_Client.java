@@ -122,7 +122,15 @@ public class IM_Client {
             isConnected = false;
         }
 
-        new ListenFromServer().start();
+        //new ListenFromServer().start();
+        Thread listenFromServer = new Thread(() -> {
+
+            while(isConnected){
+                String msg = networkInput.nextLine();
+                System.out.println(msg);
+            }
+        });
+        listenFromServer.start();
 
         // JOIN Protocol client --> server
         sendMessage("JOIN "+userName+", "+host.getInetAddress().getHostAddress()+":"+
@@ -168,39 +176,5 @@ public class IM_Client {
         catch(Exception ignored) {}
 
         System.exit(1);
-
-    }
-
-    // a class that waits for the message from the server and append them to the JTextArea
-    // if we have a GUI or simply System.out.println() it in console mode
-
-    private class ListenFromServer extends Thread {
-
-        public void run() {
-            while(isConnected) {
-                String msg = networkInput.nextLine();
-
-                // RECEIVED PROTOCOLS
-                switch (msg) {
-                    case "J_ERR":
-                        // validation failed
-                        display(msg);
-                        isConnected = false;
-                        sendMessage("QUIT "+userName);
-                        disconnect();
-                        break;
-                    case "J_OK":
-                        // validation successful;
-                        isConnected = true;
-                        break;
-                    case "LIST":
-                        display(msg);
-                        break;
-                }
-                // Print the message and add back the prompt
-                System.out.println(msg);
-            }
-
-        }
     }
 }
