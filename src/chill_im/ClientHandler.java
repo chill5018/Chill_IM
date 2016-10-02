@@ -17,11 +17,12 @@ class ClientHandler extends Thread{
     String username;
     // the date of connection
     private String date;
+    static volatile boolean isAlive = false;
 
     ClientHandler(Socket socket){
         //Set up reference to associated socket..
         this.clientSocket = socket;
-
+        
         try {
             // Create output first
             outputClient = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -36,23 +37,26 @@ class ClientHandler extends Thread{
     }
 
     public void run(){
-        String received;
+        String received = "";
 
         do {
             //Accept Messages from Client on the Socket's Input stream...
             received = inputClient.nextLine();
 
             // Log What the Users says
-            System.out.println(clientSocket.getInetAddress() + ": " + received+"\n");
+//            System.out.println(clientSocket.getInetAddress() + ": " + received+"\n");
 
             // Create a token Scanner to reac the first TOKEN == Keyword
             Scanner token = new Scanner(received);
 
             String cmd = token.next();
-            //System.out.println("Command: "+ cmd);
 
             // Create a a switch based on the command tokens SENT FROM CLIENT
             switch (cmd){
+                case "ALVE":
+                    isAlive = true;
+                    display("Alve set to true");
+                    break;
                 case "JOIN":
                     username =  token.next();
                     username = username.substring(0, username.length()-1);
@@ -70,6 +74,10 @@ class ClientHandler extends Thread{
                         close();
                     } else {
                         writeMsg("J_OK");
+                        for(int i = 0; i < clients.size(); ++i) {
+                            ClientHandler ct = clients.get(i);
+                            writeMsg((i+1) + ") " + ct.username + " since " + ct.date);
+                        }
                     }
                     break;
                 case "DATA":
@@ -111,7 +119,7 @@ class ClientHandler extends Thread{
 
 
     // try to close everything
-    private void close() {
+    void close() {
         // try to close the connection
         try {
             if(outputClient != null) outputClient.close();

@@ -47,6 +47,29 @@ public class IM_Server {
             // Keep List of "Clients" / Threads
             clients.add(handler);
 
+            // ALVE Handler Thread
+            Thread alive = new Thread(() -> {
+
+                while (true) {
+                    try {
+                        Thread.currentThread().sleep(6000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (ClientHandler.isAlive) {
+                        ClientHandler.isAlive = false;
+                        display("Set Alve to false");
+                    } else {
+                        display("No Alve --> Remove User ");
+                        handler.close();
+                        removeUserFromList(handler.username, 1);
+                    }
+                }
+            });
+            alive.start();
+
+
+
         } while (keepGoing);
 
         // KeepGoing == False --> Close Connection
